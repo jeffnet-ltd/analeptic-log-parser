@@ -140,6 +140,13 @@ async Task<Blocks> CreateUi()
                 var now = DateTime.UtcNow;
                 var entry = rateLimitStore.GetOrAdd(clientIp, _ => (0, now));
 
+                // ============================================================================
+                // DESIGN NOTE (AI Collaboration): ASP.NET's UseRateLimiter() middleware
+                // returns a raw HTTP 429 that Gradio.Net swallows — the user never sees it.
+                // I directed a second enforcement layer here inside the click handler using a
+                // ConcurrentDictionary to mirror the 2 req/min/IP policy and surface a
+                // friendly message instead of a silent failure.
+                // ============================================================================
                 if (now - entry.WindowStart > TimeSpan.FromMinutes(1))
                 {
                     rateLimitStore[clientIp] = (1, now);
