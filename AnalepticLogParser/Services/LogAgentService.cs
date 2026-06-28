@@ -1,8 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using Anthropic.SDK;
-using Anthropic.SDK.Constants;
-using Anthropic.SDK.Messaging;
 using AnalepticLogParser.Models;
 
 namespace AnalepticLogParser.Services;
@@ -13,6 +11,8 @@ public sealed class LogAgentService : ILogAgentService
     private const int LogSizeThresholdBytes = 50 * 1024;
     private const int ContextLines = 20;
     private const int MaxRetries = 3;
+
+    private readonly IAnthropicClientFactory _clientFactory;
 
     private static readonly string SystemPrompt =
         """
@@ -26,6 +26,11 @@ public sealed class LogAgentService : ILogAgentService
         Output nothing except the JSON object.
         """;
 
+    public LogAgentService(IAnthropicClientFactory clientFactory)
+    {
+        _clientFactory = clientFactory;
+    }
+
     public async Task<TriageReport> ExecuteTriageAsync(
         string rawLog,
         string providedKey,
@@ -34,20 +39,11 @@ public sealed class LogAgentService : ILogAgentService
         string apiKey = ResolveApiKey(accessCode, providedKey);
         string processedLog = TruncateIfNeeded(rawLog);
 
-        using var client = new AnthropicClient(new APIAuthentication(apiKey));
+        using var client = _clientFactory.Create(apiKey);
 
-        var messages = new List<Message>
+        var history = new List<(string Role, string Content)>
         {
-            new Message(RoleType.User, $"<log>\n{processedLog}\n</log>")
-        };
-
-        var parameters = new MessageParameters
-        {
-            Model = AnthropicModels.Claude45Sonnet,
-            MaxTokens = 512,
-            Stream = false,
-            System = [new SystemMessage(SystemPrompt)],
-            Messages = messages
+            ("user", $"<log>\n{processedLog}\n</log>")
         };
 
         int retryCount = 0;
@@ -57,12 +53,8 @@ public sealed class LogAgentService : ILogAgentService
         {
             try
             {
-                var response = await client.Messages.GetClaudeMessageAsync(parameters);
-                string rawJson = response.Message.Content is List<ContentBase> blocks
-                    ? string.Join("", blocks.OfType<TextContent>().Select(t => t.Text ?? ""))
-                    : response.Message.ToString() ?? string.Empty;
-
-                messages.Add(response.Message);
+                string rawJson = await client.CompleteAsync(SystemPrompt, history);
+                history.Add(("assistant", rawJson));
 
                 TriageReport? report;
                 try
@@ -75,7 +67,7 @@ public sealed class LogAgentService : ILogAgentService
                 {
                     string validationError = $"JSON parse error: {je.Message}";
                     telemetry.AppendLine($"[WARN] attempt={retryCount + 1} {validationError}");
-                    messages.Add(new Message(RoleType.User,
+                    history.Add(("user",
                         $"Your previous response was not valid JSON.\n" +
                         $"Malformed response: {rawJson}\n" +
                         $"Error: {validationError}\n" +
@@ -91,7 +83,7 @@ public sealed class LogAgentService : ILogAgentService
                         : $"Line must be a positive integer, got {report.Line}.";
 
                     telemetry.AppendLine($"[WARN] attempt={retryCount + 1} validation failed: {validationError}");
-                    messages.Add(new Message(RoleType.User,
+                    history.Add(("user",
                         $"Validation failed.\n" +
                         $"Malformed response: {rawJson}\n" +
                         $"Error: {validationError}\n" +
@@ -159,7 +151,6 @@ public sealed class LogAgentService : ILogAgentService
 
         if (includedIndices.Count == 0)
         {
-            // No critical lines found — return the first 50KB slice directly.
             int byteLimit = LogSizeThresholdBytes;
             int charCount = 0;
             int byteCount = 0;
@@ -179,12 +170,10 @@ public sealed class LogAgentService : ILogAgentService
         return sb.ToString();
     }
 
-    private static bool ContainsCriticalKeyword(string line)
-    {
-        return line.Contains("ERROR", StringComparison.OrdinalIgnoreCase)
-            || line.Contains("EXCEPTION", StringComparison.OrdinalIgnoreCase)
-            || line.Contains("FATAL", StringComparison.OrdinalIgnoreCase);
-    }
+    private static bool ContainsCriticalKeyword(string line) =>
+        line.Contains("ERROR", StringComparison.OrdinalIgnoreCase)
+        || line.Contains("EXCEPTION", StringComparison.OrdinalIgnoreCase)
+        || line.Contains("FATAL", StringComparison.OrdinalIgnoreCase);
 
     private static string ScrubKey(string text, string apiKey)
     {

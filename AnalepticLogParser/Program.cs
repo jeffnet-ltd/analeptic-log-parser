@@ -27,6 +27,7 @@ builder.Services.AddRateLimiter(options =>
 
 // ── Application services ─────────────────────────────────────────────────────
 builder.Services.AddGradio();
+builder.Services.AddSingleton<IAnthropicClientFactory, DefaultAnthropicClientFactory>();
 builder.Services.AddSingleton<ILogAgentService, LogAgentService>();
 builder.Services.AddHttpContextAccessor();
 
