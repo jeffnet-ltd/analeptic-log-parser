@@ -33,7 +33,7 @@ This project was planned over 2 days and executed in 1 day using **Claude Code**
 ---
 
 ## Enterprise Safeguards
-* **Gatekeeping:** Features dual-authentication logic. It securely accepts user-provided API keys or checks a server-side token gatekeeper using the specific recruiter verification code (`AnalepticMongoose`).
+* **Gatekeeping:** Features dual-authentication logic. It securely accepts user-provided API keys or checks a server-side token gatekeeper using the specific recruiter verification code.
 * **Rate Limiting:** Enforces an in-process IP-based throttle (2 requests/min) to prevent upstream API token starvation and billing exploits.
 
 ---
@@ -45,7 +45,7 @@ This project was planned over 2 days and executed in 1 day using **Claude Code**
 git clone https://github.com/jeffnet-ltd/analeptic-log-parser.git
 cd analeptic-log-parser
 
-# 2. Set your Anthropic API key (required for the AnalepticMongoose access code path)
+# 2. Set your Anthropic API key (required for the access code path)
 $env:ANTHROPIC_API_KEY = "sk-ant-..."   # PowerShell
 # export ANTHROPIC_API_KEY="sk-ant-..."  # bash
 
@@ -73,7 +73,7 @@ docker run -p 7860:7860 \
 
 | Variable | Required | Description |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | When using `AnalepticMongoose` access code | Server-side Anthropic API key used by the hosted demo. Not required if users supply their own key in the UI. |
+| `ANTHROPIC_API_KEY` | When using access code | Server-side Anthropic API key used by the hosted demo. Not required if users supply their own key in the UI. |
 
 ---
 
