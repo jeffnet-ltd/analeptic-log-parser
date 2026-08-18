@@ -209,9 +209,7 @@ async Task<string> GeneratePlaybookAsync(
 {
     try
     {
-        string? apiKey = accessCode == "AnalepticMongoose"
-            ? Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? providedKey
-            : providedKey;
+        string? apiKey = LogAgentService.TryResolveApiKey(accessCode, providedKey);
 
         if (string.IsNullOrWhiteSpace(apiKey))
             return "*(No API key available — SRE Playbook generation skipped.)*";

@@ -7,7 +7,6 @@ namespace AnalepticLogParser.Services;
 
 public sealed class LogAgentService : ILogAgentService
 {
-    private const string AccessPassphrase = "AnalepticMongoose";
     private const int LogSizeThresholdBytes = 50 * 1024;
     private const int ContextLines = 20;
     private const int MaxRetries = 3;
@@ -130,21 +129,25 @@ public sealed class LogAgentService : ILogAgentService
     // provided key → hard deny. Claude Code generated the initial single-key
     // path; I enforced the passphrase gate and the strict UnauthorizedAccessException
     // throw to prevent silent fallbacks that could expose billing.
+    // The passphrase itself lives only in the ACCESS_PASSPHRASE env var (an HF Space
+    // secret) — never hardcoded — so it can be rotated without touching source.
     // ============================================================================
-    private static string ResolveApiKey(string accessCode, string providedKey)
+    public static string? TryResolveApiKey(string accessCode, string providedKey)
     {
-        if (accessCode == AccessPassphrase)
+        string? passphrase = Environment.GetEnvironmentVariable("ACCESS_PASSPHRASE");
+        if (!string.IsNullOrEmpty(passphrase) && accessCode == passphrase)
         {
             string? envKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
             if (!string.IsNullOrWhiteSpace(envKey))
                 return envKey;
         }
 
-        if (!string.IsNullOrWhiteSpace(providedKey))
-            return providedKey;
-
-        throw new UnauthorizedAccessException("Access Denied");
+        return string.IsNullOrWhiteSpace(providedKey) ? null : providedKey;
     }
+
+    private static string ResolveApiKey(string accessCode, string providedKey) =>
+        TryResolveApiKey(accessCode, providedKey)
+        ?? throw new UnauthorizedAccessException("Access Denied");
 
     private static string TruncateIfNeeded(string log)
     {

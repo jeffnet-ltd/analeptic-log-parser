@@ -84,6 +84,7 @@ docker run -p 7860:7860 \
 | Variable | Required | Description |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | When using access code | Server-side Anthropic API key used by the hosted demo. Not required if users supply their own key in the UI. |
+| `ACCESS_PASSPHRASE` | When using access code | The recruiter gate passphrase. Set only as a Space/host secret — never hardcode it in source or docs. |
 
 ---
 

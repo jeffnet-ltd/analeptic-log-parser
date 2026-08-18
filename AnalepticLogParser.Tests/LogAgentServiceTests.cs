@@ -171,4 +171,51 @@ public sealed class LogAgentServiceTests
         // Key gate fires before the factory is ever called
         Assert.Equal(0, stub.CallCount);
     }
+
+    /// <summary>
+    /// The passphrase gate is driven entirely by the ACCESS_PASSPHRASE env var —
+    /// never hardcoded — so it must be rotatable without a source change. A matching
+    /// access code should unlock the server-side ANTHROPIC_API_KEY.
+    /// </summary>
+    [Fact]
+    public void TryResolveApiKey_MatchingAccessCodeUnlocksServerKey()
+    {
+        Environment.SetEnvironmentVariable("ACCESS_PASSPHRASE", "test-passphrase");
+        Environment.SetEnvironmentVariable("ANTHROPIC_API_KEY", "sk-test-server-key");
+        try
+        {
+            string? resolved = LogAgentService.TryResolveApiKey(
+                accessCode: "test-passphrase", providedKey: "");
+
+            Assert.Equal("sk-test-server-key", resolved);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ACCESS_PASSPHRASE", null);
+            Environment.SetEnvironmentVariable("ANTHROPIC_API_KEY", null);
+        }
+    }
+
+    /// <summary>
+    /// A wrong or absent access code must never fall back to the server-side key —
+    /// only an explicitly provided key (or nothing) is returned.
+    /// </summary>
+    [Fact]
+    public void TryResolveApiKey_WrongAccessCodeFallsBackToProvidedKeyOnly()
+    {
+        Environment.SetEnvironmentVariable("ACCESS_PASSPHRASE", "test-passphrase");
+        Environment.SetEnvironmentVariable("ANTHROPIC_API_KEY", "sk-test-server-key");
+        try
+        {
+            string? resolved = LogAgentService.TryResolveApiKey(
+                accessCode: "wrong-code", providedKey: "sk-user-supplied");
+
+            Assert.Equal("sk-user-supplied", resolved);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ACCESS_PASSPHRASE", null);
+            Environment.SetEnvironmentVariable("ANTHROPIC_API_KEY", null);
+        }
+    }
 }
