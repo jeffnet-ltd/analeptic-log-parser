@@ -11,3 +11,13 @@ project.lock.json
 
 # Claude Code
 .claude/
+
+# Secrets — never commit these
+.env
+.env.*
+*.local.json
+appsettings.*.local.json
+appsettings.Secrets.json
+secrets.json
+*.pfx
+*.key
