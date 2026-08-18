@@ -1,3 +1,13 @@
+---
+title: Analeptic Log Parser
+emoji: 🩺
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # AnalepticLogParser
 
 > **Live Demo:** [huggingface.co/spaces/JeffNet/analeptic-log-parser](https://huggingface.co/spaces/JeffNet/analeptic-log-parser) &nbsp;|&nbsp; **Source:** [github.com/jeffnet-ltd/analeptic-log-parser](https://github.com/jeffnet-ltd/analeptic-log-parser)
